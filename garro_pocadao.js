@@ -1,5 +1,5 @@
 // =================================================================
-// Garro Pacadao:  ESTAVEL (V8 Biturbo)
+// Garro Pacadao : ESTAVEL (V8)
 // =================================================================
 
 (function() {try {
@@ -454,32 +454,24 @@ function ocultarMenusTemporariamente() {
     }
 }
 
-// Força o fechamento de qualquer popover ou menu aberto no Genesys com verificação agressiva
+// Força o fechamento de qualquer popover ou menu aberto no Genesys
 function fecharMenusGenesys() {
-    // 1. Tenta métodos nativos primeiro (ESC e clique fora)
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+    // 1. Simula um clique no fundo da tela (backdrop)
     document.body.click();
     
-    // 2. Loop de insistência: Clica no botão do perfil até ele realmente fechar
-    let tentativasFechamento = 0;
-    const checarFechamento = setInterval(() => {
-        const btnMenu = document.querySelector('#user-settings-button');
-        
-        // Se o botão ainda estiver com o menu aberto (aria-expanded="true"), clica nele!
-        if (btnMenu && btnMenu.getAttribute('aria-expanded') === 'true') {
-            try { btnMenu.click(); } catch(e) {}
-        } else {
-            // Se o menu já estiver marcado como fechado (ou não existir), paramos de tentar
-            clearInterval(checarFechamento);
-        }
-        
-        tentativasFechamento++;
-        
-        // Aborta após 1.5 segundos (10 tentativas) para não criar loop infinito
-        if (tentativasFechamento > 10) {
-            clearInterval(checarFechamento);
-        }
-    }, 150);
+    // 2. Dispara a tecla ESC (fecha a maioria dos modais modernos)
+    document.dispatchEvent(new KeyboardEvent('keydown', { 
+        key: 'Escape', 
+        code: 'Escape', 
+        keyCode: 27, 
+        bubbles: true 
+    }));
+    
+    // 3. Fallback: se o botão principal ainda estiver marcado como aberto, clica nele de novo
+    const btnMenu = document.querySelector('#user-settings-button');
+    if (btnMenu && btnMenu.getAttribute('aria-expanded') === 'true') {
+        btnMenu.click();
+    }
 }
 
 // Lógica para pausas diretas (ex: Na Fila, Descanso)
