@@ -1,5 +1,5 @@
 // =================================================================
-// Parceiro de Programacao: FUSAO ESTAVEL (V56.23 - AZUL SOLIDO + FIX AGENDAMENTO)
+// Parceiro de Programacao: FUSAO ESTAVEL (V56.23 - AZUL SOLIDO + FIX AGENDAMENTO + MODO STEALTH)
 // =================================================================
 
 (function() {try {
@@ -15,12 +15,12 @@ const SELECTORES = {
 };
 
 const PAUSAS_AGENDADAS_DEFAULT = [
-    { hora: "10:40", status: "Na fila" },
+    { hora: "10:40", status: "Na fila" }, { hora: "11:55", status: "Pausa out" },
     { hora: "12:00", status: "Descanso" }, { hora: "12:10", status: "Na fila" },
-    { hora: "13:30", status: "Refeição" },
-    { hora: "13:50", status: "Na fila" },
-    { hora: "15:10", status: "Descanso" }, { hora: "15:20", status: "Na fila" },
-    { hora: "16:59", status: "Disponivel" }
+    { hora: "13:25", status: "Pausa out" }, { hora: "13:30", status: "Refeição" },
+    { hora: "13:50", status: "Na fila" }, { hora: "15:15", status: "Pausa out" },
+    { hora: "15:20", status: "Descanso" }, { hora: "15:30", status: "Na fila" },
+    { hora: "16:55", status: "Pausa out" }, { hora: "17:00", status: "Logoff" }
 ];
 
 let estadoAtual = { tipo: 'Disponível', inicio: new Date(), ativa: false };
@@ -66,7 +66,8 @@ function salvarEstadoAtualLocalStorage() {
 }
 
 function salvarStatusAutomacaoLocalStorage(ativo) {
-    try { localStorage.setItem(STORAGE_KEY_AUTOMACAO_ATIVA, JSON.stringify(ativo)); } catch(e){}
+    try { localStorage.setItem(STORAGE_KEY_AUTOMACAO_ATIVA, JSON.stringify(ativo));
+    } catch(e){}
 }
 
 function recuperarEstadoInicial() {
@@ -113,10 +114,12 @@ function clicarElemento(s, t = null) {
                 e = null;
             }
         }
-    } else { e = document.querySelector(s); }
+    } else { e = document.querySelector(s);
+    }
 
     if (e) {
-        try { e.click(); } catch(err) {}
+        try { e.click();
+        } catch(err) {}
         const c = new MouseEvent('click', { view: window, bubbles: true, cancelable: true });
         e.dispatchEvent(c);
         return true;
@@ -149,27 +152,30 @@ function registrarPausa(n){
 
 function adicionarAtalho(){document.addEventListener('keydown',function(e){const c=e.ctrlKey||e.metaKey,s=e.shiftKey,o=e.key==='1';if(document.activeElement&&['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;if(c&&s&&o){e.preventDefault();toggleVisibilidade()}})}
 
-// CORREÇÃO AQUI: Agora a automação normaliza o texto antes de comparar, evitando falhas!
 function mapearEexecutarAcao(s){
     const status = normalizarStatusTexto(s);
     switch(status){
-        case "na fila": iniciarNaFila(true); break;
+        case "na fila": iniciarNaFila(true);
+            break;
         case "disponivel": voltarDisponivel(true); break;
         case "pausa out": iniciarPausaOut(true); break;
         case "pausa auricular":
         case "pausa pessoal":
-        case "descanso": iniciarDescanso(true); break;
+        case "descanso": iniciarDescanso(true);
+            break;
         case "refeicao": iniciarRefeicao(true); break;
         case "treinamento": iniciarTreinamento(true); break;
         case "reuniao": iniciarReuniao(true); break;
         case "logoff": realizarLogoff(true); break;
         case "atividade backoffice":
         case "ativ. backoffice":
-        case "backoffice": iniciarBackoffice(true); break;
+        case "backoffice": iniciarBackoffice(true);
+            break;
         case "feedback": iniciarFeedback(true); break;
         case "particular": iniciarParticular(true); break;
         case "questoes de saude":
-        case "saude": iniciarQuestoesSaude(true); break;
+        case "saude": iniciarQuestoesSaude(true);
+            break;
     }
 }
 
@@ -181,7 +187,6 @@ function statusEhEquivalente(statusDesejado, statusTela) {
     const desejado = normalizarStatusTexto(statusDesejado);
     const tela = normalizarStatusTexto(statusTela);
     if (!tela) return false;
-
     const equivalencias = {
         'na fila': ['na fila', 'on queue'],
         'disponivel': ['disponivel', 'available'],
@@ -200,7 +205,6 @@ function statusEhEquivalente(statusDesejado, statusTela) {
         'questoes de saude': ['questoes de saude', 'saude'],
         'saude': ['questoes de saude', 'saude']
     };
-
     const lista = equivalencias[desejado] || [desejado];
     return lista.some(item => tela.includes(item));
 }
@@ -208,8 +212,10 @@ function statusEhEquivalente(statusDesejado, statusTela) {
 function obterStatusAtualDaTela() {
     const candidatos = [];
     try { const toggle = document.querySelector(SELECTORES.MENU_STATUS_TOGGLE); if (toggle) candidatos.push(toggle.textContent); } catch(e) {}
-    try { document.querySelectorAll(SELECTORES.STATUS_LABEL_TEXT).forEach(el => { if (el && el.offsetParent !== null) candidatos.push(el.textContent); }); } catch(e) {}
-    try { document.querySelectorAll('[class*="presence"], [class*="status"], [aria-label*="status"], [aria-label*="Status"]').forEach(el => { if (el && el.offsetParent !== null) candidatos.push(el.textContent || el.getAttribute('aria-label') || ''); }); } catch(e) {}
+    try { document.querySelectorAll(SELECTORES.STATUS_LABEL_TEXT).forEach(el => { if (el && el.offsetParent !== null) candidatos.push(el.textContent); });
+    } catch(e) {}
+    try { document.querySelectorAll('[class*="presence"], [class*="status"], [aria-label*="status"], [aria-label*="Status"]').forEach(el => { if (el && el.offsetParent !== null) candidatos.push(el.textContent || el.getAttribute('aria-label') || ''); });
+    } catch(e) {}
     return candidatos.map(t => (t || '').trim()).filter(Boolean).join(' | ');
 }
 
@@ -220,10 +226,8 @@ function confirmarPausaAplicada(statusDesejado) {
 
 function executarAcaoComConfirmacao(evento, horaEvento, tentativa = 1) {
     if (!evento || !isAgendamentoAtivo || isAutomacaoPausada) return;
-
     confirmacaoAgendamentoAtual = { hora: horaEvento, status: evento.status, tentativa };
     mapearEexecutarAcao(evento.status);
-
     setTimeout(() => {
         if (!confirmacaoAgendamentoAtual || confirmacaoAgendamentoAtual.hora !== horaEvento || !isAgendamentoAtivo || isAutomacaoPausada) return;
 
@@ -252,7 +256,6 @@ function verificarEExecutarAgendamentos(){
 
     Object.keys(window).forEach(k=>{if(k.startsWith('notif_')){const e=k.split('_')[1];if(e<h){clearTimeout(window[k]);delete window[k];}}});
     const eA=PAUSAS_AGENDADAS.find(p=>p.hora===h);
-
     if(eA && ultimoEventoProcessado !== h){
         if(!confirmacaoAgendamentoAtual || confirmacaoAgendamentoAtual.hora !== h) executarAcaoComConfirmacao(eA, h, 1);
         return;
@@ -298,7 +301,8 @@ function toggleAgendamento(forceState = null){
         salvarHorariosLocalStorage(PAUSAS_AGENDADAS);
         ultimoEventoProcessado=null; isAutomacaoPausada=!1; isAgendamentoAtivo=!0;
         if(b){b.textContent="Desligar Automação";b.style.backgroundColor = '#0b5ed7';}
-        if(p){ p.textContent="Pausar ⏸️";p.style.backgroundColor = '#0a58ca';p.style.display='inline-block'; }
+        if(p){ p.textContent="Pausar ⏸️";p.style.backgroundColor = '#0a58ca';p.style.display='inline-block';
+        }
         iniciarSchedulerSincronizado();
     }
     salvarStatusAutomacaoLocalStorage(isAgendamentoAtivo);
@@ -328,11 +332,11 @@ function adicionarNovoHorario(){
     if(!iH||!iS)return;
     const h=iH.value,s=iS.value.trim();
     if(!h||!s)return;
-
     if (indiceEdicao >= 0 && indiceEdicao < PAUSAS_AGENDADAS.length) {
         PAUSAS_AGENDADAS.splice(indiceEdicao, 1);
         indiceEdicao = -1;
-        if (btn) { btn.innerHTML = "+"; btn.style.backgroundColor = "#0d6efd"; btn.style.color = "#fff"; }
+        if (btn) { btn.innerHTML = "+"; btn.style.backgroundColor = "#0d6efd"; btn.style.color = "#fff";
+        }
     } else {
         if(PAUSAS_AGENDADAS.some(p=>p.hora===h)){
             if(!confirm(`Ja existe ${h}. Substituir?`))return;
@@ -346,7 +350,6 @@ function adicionarNovoHorario(){
     iH.value='';iS.value='';
     renderizarAgendamentos();
     recalcularAgendamentosEmTempoReal();
-
     if(btn && btn.textContent === "+") {
         const txtOriginal = btn.innerHTML;
         btn.innerHTML = "✓";
@@ -364,7 +367,8 @@ function removerHorario(idx){
         if(indiceEdicao === idx) {
             indiceEdicao = -1;
             const btn=document.getElementById('btn-adicionar-horario'),iH=document.getElementById('novo-horario-hora'),iS=document.getElementById('novo-horario-status');
-            if(btn) { btn.innerHTML = "+"; btn.style.backgroundColor = "#0d6efd"; btn.style.color = "#fff"; }
+            if(btn) { btn.innerHTML = "+"; btn.style.backgroundColor = "#0d6efd"; btn.style.color = "#fff";
+            }
             if(iH) iH.value=''; if(iS) iS.value='';
         }
     }
@@ -379,7 +383,8 @@ function carregarHorarioParaEdicao(idx){
     iH.value=item.hora; iS.value=nomeExibicaoStatus(item.status);
     iS.focus(); iS.select();
     indiceEdicao = idx;
-    if (btn) { btn.innerHTML = "💾"; btn.style.backgroundColor = "#0b5ed7"; }
+    if (btn) { btn.innerHTML = "💾"; btn.style.backgroundColor = "#0b5ed7";
+    }
 }
 
 function radarCliqueGenesys(textoAlvo) {
@@ -403,17 +408,14 @@ function radarCliqueGenesys(textoAlvo) {
     }
 
     if (!elementoEncontrado) return false;
-
     const alvoFinal = elementoEncontrado.closest('gux-radio') ||
     elementoEncontrado.closest('gux-option') ||
     elementoEncontrado.closest('gux-menu-item') ||
     elementoEncontrado.closest('gux-list-item') ||
     elementoEncontrado;
-
     ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(evt => {
         alvoFinal.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }));
     });
-
     try { alvoFinal.click(); } catch(e) {}
     if (alvoFinal.tagName.toLowerCase() === 'input') {
         alvoFinal.dispatchEvent(new Event('input', { bubbles: true }));
@@ -423,38 +425,118 @@ function radarCliqueGenesys(textoAlvo) {
     return true;
 }
 
-function executarLogicaMenuSimples(nomePausa) {
-    document.querySelector('#user-settings-button')?.click();
-    setTimeout(() => {
-        document.querySelector('#presence-button')?.click();
-        setTimeout(() => { radarCliqueGenesys(nomePausa); }, 800);
-    }, 800);
-}
 
-function executarLogicaSubMenu(menuPrincipal, nomePausa) {
-    document.querySelector('#user-settings-button')?.click();
-    setTimeout(() => {
-        document.querySelector('#presence-button')?.click();
+// --- INICIO MODO STEALTH E FECHAMENTO AUTOMATICO ---
+
+// Função para esconder os menus do Genesys temporariamente durante a automação
+function ocultarMenusTemporariamente() {
+    if (!document.getElementById('css-oculta-menu')) {
+        const style = document.createElement('style');
+        style.id = 'css-oculta-menu';
+        // Adicionados role="dialog" e seletores de popover que o Genesys usa no primeiro menu
+        style.innerHTML = `
+            gux-popover, gux-menu, .menu-container, [role="menu"], [role="dialog"], 
+            .status-popover, .user-menu-container, [data-test-id*="menu"], 
+            [id*="popover"], .user-settings-popover {
+                opacity: 0 !important;
+                pointer-events: none !important;
+                transform: scale(0) !important;
+                transition: none !important;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Remove a camuflagem após 4.5 segundos
         setTimeout(() => {
-            radarCliqueGenesys(menuPrincipal);
-            let tentouClicar = false;
-            const esperarPausa = setInterval(() => {
-                if (!tentouClicar) {
-                    if (radarCliqueGenesys(nomePausa)) {
-                        tentouClicar = true;
-                        clearInterval(esperarPausa);
-                    }
-                }
-            }, 200);
-            setTimeout(() => clearInterval(esperarPausa), 4000);
-        }, 800);
-    }, 800);
+            const estilo = document.getElementById('css-oculta-menu');
+            if (estilo) estilo.remove();
+        }, 4500);
+    }
 }
 
-// CORREÇÃO: Função exclusiva Em Fila conforme solicitado
-function executarLogicaNaFila() { 
-    executarLogicaMenuSimples('Em fila'); 
+// Força o fechamento de qualquer popover ou menu aberto no Genesys com verificação agressiva
+function fecharMenusGenesys() {
+    // 1. Tenta métodos nativos primeiro (ESC e clique fora)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+    document.body.click();
+    
+    // 2. Loop de insistência: Clica no botão do perfil até ele realmente fechar
+    let tentativasFechamento = 0;
+    const checarFechamento = setInterval(() => {
+        const btnMenu = document.querySelector('#user-settings-button');
+        
+        // Se o botão ainda estiver com o menu aberto (aria-expanded="true"), clica nele!
+        if (btnMenu && btnMenu.getAttribute('aria-expanded') === 'true') {
+            try { btnMenu.click(); } catch(e) {}
+        } else {
+            // Se o menu já estiver marcado como fechado (ou não existir), paramos de tentar
+            clearInterval(checarFechamento);
+        }
+        
+        tentativasFechamento++;
+        
+        // Aborta após 1.5 segundos (10 tentativas) para não criar loop infinito
+        if (tentativasFechamento > 10) {
+            clearInterval(checarFechamento);
+        }
+    }, 150);
 }
+
+// Lógica para pausas diretas (ex: Na Fila, Descanso)
+function executarLogicaMenuSimples(nomePausa) {
+    ocultarMenusTemporariamente();
+    
+    // Aguarda 50ms para a camuflagem fazer efeito antes do 1º clique
+    setTimeout(() => {
+        document.querySelector('#user-settings-button')?.click();
+        setTimeout(() => {
+            document.querySelector('#presence-button')?.click();
+            setTimeout(() => { 
+                radarCliqueGenesys(nomePausa); 
+                
+                // NOVO: Fecha o menu instantaneamente após clicar na pausa
+                setTimeout(() => { fecharMenusGenesys(); }, 150);
+                
+            }, 600);
+        }, 600);
+    }, 50);
+}
+
+// Lógica para pausas dentro de submenus (ex: Pausa out -> Refeição)
+function executarLogicaSubMenu(menuPrincipal, nomePausa) {
+    ocultarMenusTemporariamente();
+    
+    // Aguarda 50ms para a camuflagem fazer efeito antes do 1º clique
+    setTimeout(() => {
+        document.querySelector('#user-settings-button')?.click();
+        setTimeout(() => {
+            document.querySelector('#presence-button')?.click();
+            setTimeout(() => {
+                radarCliqueGenesys(menuPrincipal);
+                let tentouClicar = false;
+                
+                const esperarPausa = setInterval(() => {
+                    if (!tentouClicar) {
+                        if (radarCliqueGenesys(nomePausa)) {
+                            tentouClicar = true;
+                            clearInterval(esperarPausa);
+                            
+                            // NOVO: Fecha o menu instantaneamente após confirmar o clique na pausa final
+                            setTimeout(() => { fecharMenusGenesys(); }, 150);
+                        }
+                    }
+                }, 150);
+                
+                setTimeout(() => clearInterval(esperarPausa), 3500);
+            }, 600);
+        }, 600);
+    }, 50);
+}
+
+// --- FIM MODO STEALTH E FECHAMENTO AUTOMATICO ---
+
+
+function executarLogicaNaFila() { executarLogicaMenuSimples('Em fila'); }
 function executarLogicaRefeicao() { executarLogicaMenuSimples('Refeição'); }
 function executarLogicaDisponivel() { executarLogicaMenuSimples('Disponível'); }
 function executarLogicaTreinamento() { executarLogicaMenuSimples('Treinamento'); }
@@ -518,7 +600,6 @@ function setupGPUDrag(elementId, headerId, storageKey) {
     let initialLeft, initialTop;
     let currentX, currentY;
     let rAF = null;
-
     function updatePosition() {
         if (!isDragging || !isRealMovement) return;
         element.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
@@ -552,10 +633,8 @@ function setupGPUDrag(elementId, headerId, storageKey) {
     function onPointerMove(e) {
         if (!isDragging) return;
         e.preventDefault();
-
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-
         if (!isRealMovement) {
             if (Math.hypot(dx, dy) < 5) return;
             isRealMovement = true;
@@ -567,7 +646,6 @@ function setupGPUDrag(elementId, headerId, storageKey) {
             element.style.cursor = 'grabbing';
             if (header) header.style.cursor = 'grabbing';
             if (icone) icone.style.cursor = 'grabbing';
-
             overlay.style.display = 'block';
             rAF = requestAnimationFrame(updatePosition);
         }
@@ -628,13 +706,16 @@ function toggleVisibilidade() {
         c.style.background='transparent'; c.style.border='none'; c.style.boxShadow='none'; c.style.backdropFilter='none'; c.style.borderRadius='0';
     } else {
         o.style.display = 'block'; i.style.display = 'none';
-        const lE = 300; c.style.width = lE + 'px'; c.style.padding = '15px'; c.style.cursor = 'default'; c.style.fontFamily = "'Segoe UI',Tahoma,Geneva,Verdana,sans-serif";
+        const lE = 300;
+        c.style.width = lE + 'px'; c.style.padding = '15px'; c.style.cursor = 'default'; c.style.fontFamily = "'Segoe UI',Tahoma,Geneva,Verdana,sans-serif";
         c.style.background='rgba(25, 30, 40, 0.95)';
         c.style.border='1px solid #0d6efd'; c.style.boxShadow='0 8px 20px rgba(0,0,0,0.5),0 0 10px rgba(13,110,253,0.2)';
         c.style.backdropFilter='blur(10px)'; c.style.borderRadius='10px';
-        const h = c.querySelector('#pausa-script-header'); if (h) h.style.cursor = 'pointer';
+        const h = c.querySelector('#pausa-script-header');
+        if (h) h.style.cursor = 'pointer';
         if(c.style.top&&c.style.left){let cT=parseInt(c.style.top,10),cL=parseInt(c.style.left,10);setTimeout(()=>{const hE=c.offsetHeight;const mL=window.innerWidth-lE-m;if(cL>mL){c.style.left=mL+'px'}if(cL<m){c.style.left=m+'px'}const mT=window.innerHeight-hE-m;if(cT>mT){c.style.top=mT+'px'}if(cT<m){c.style.top=m+'px'}},10)}
-        else { const r=c.getBoundingClientRect();c.style.left=r.left+'px';c.style.top=r.top+'px';c.style.bottom = ''; c.style.right = ''; }
+        else { const r=c.getBoundingClientRect();c.style.left=r.left+'px';c.style.top=r.top+'px';c.style.bottom = '';
+        c.style.right = ''; }
     }
 }
 
@@ -643,11 +724,11 @@ function toggleVisibilidadeConfig(){
     if(!c)return;
     isConfigPainelAberto=!isConfigPainelAberto;
     c.style.display=isConfigPainelAberto?'block':'none';
-
     if(!isConfigPainelAberto) {
         indiceEdicao = -1;
         const btn=document.getElementById('btn-adicionar-horario'),iH=document.getElementById('novo-horario-hora'),iS=document.getElementById('novo-horario-status');
-        if(btn) { btn.innerHTML = "+"; btn.style.backgroundColor = "#0d6efd"; btn.style.color = "#fff"; }
+        if(btn) { btn.innerHTML = "+";
+        btn.style.backgroundColor = "#0d6efd"; btn.style.color = "#fff"; }
         if(iH) iH.value=''; if(iS) iS.value='';
     } else {
         renderizarAgendamentos();renderizarHistoricoLog();renderizarEstatisticas();
@@ -660,7 +741,8 @@ function nomeExibicaoStatus(status) {
     return status;
 }
 
-function renderizarAgendamentos(){const l=document.getElementById('agendamento-lista');if(!l)return; l.innerHTML='';if(PAUSAS_AGENDADAS.length===0){l.innerHTML='<p style="color:#999;margin:5px 0;font-size:11px;text-align:center;">Nenhum horario agendado.</p>'}else{const r=document.createDocumentFragment();PAUSAS_AGENDADAS.forEach((p,idx)=>{const i=document.createElement('div');i.style.cssText=`display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed #ffffff15;padding:4px 2px;font-size:11px;`;const tD=document.createElement('div');tD.style.flexGrow='1';tD.innerHTML=`<strong>${p.hora}</strong>: ${nomeExibicaoStatus(p.status)}`;const bD=document.createElement('div');bD.style.flexShrink='0';bD.style.marginLeft='10px'; const bE=document.createElement('button');bE.innerHTML='✏️';bE.title=`Editar ${p.hora}`;bE.style.cssText=`background:0 0;border:none;color:#0d6efd;cursor:pointer;font-size:14px;padding:0 4px;opacity:.7;transition:opacity .2s;`;bE.onmouseover=function(){this.style.opacity='1'};bE.onmouseout=function(){this.style.opacity='.7'};bE.onclick=()=>carregarHorarioParaEdicao(idx); const bR=document.createElement('button');bR.innerHTML='❌';bR.title=`Remover ${p.hora}`;bR.style.cssText=`background:0 0;border:none;color:#e63946;cursor:pointer;font-size:14px;padding:0 4px;margin-left:5px;opacity:.7;transition:opacity .2s;`;bR.onmouseover=function(){this.style.opacity='1'};bE.onmouseout=function(){this.style.opacity='.7'};bR.onclick=()=>removerHorario(idx); bD.appendChild(bE);bD.appendChild(bR);i.appendChild(tD);i.appendChild(bD);r.appendChild(i)});l.appendChild(r)}}
+function renderizarAgendamentos(){const l=document.getElementById('agendamento-lista');if(!l)return; l.innerHTML='';if(PAUSAS_AGENDADAS.length===0){l.innerHTML='<p style="color:#999;margin:5px 0;font-size:11px;text-align:center;">Nenhum horario agendado.</p>'}else{const r=document.createDocumentFragment();PAUSAS_AGENDADAS.forEach((p,idx)=>{const i=document.createElement('div');i.style.cssText=`display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed #ffffff15;padding:4px 2px;font-size:11px;`;const tD=document.createElement('div');tD.style.flexGrow='1';tD.innerHTML=`<strong>${p.hora}</strong>: ${nomeExibicaoStatus(p.status)}`;const bD=document.createElement('div');bD.style.flexShrink='0';bD.style.marginLeft='10px'; const bE=document.createElement('button');bE.innerHTML='✏️';bE.title=`Editar ${p.hora}`;bE.style.cssText=`background:0 0;border:none;color:#0d6efd;cursor:pointer;font-size:14px;padding:0 4px;opacity:.7;transition:opacity .2s;`;bE.onmouseover=function(){this.style.opacity='1'};bE.onmouseout=function(){this.style.opacity='.7'};bE.onclick=()=>carregarHorarioParaEdicao(idx);
+    const bR=document.createElement('button');bR.innerHTML='❌';bR.title=`Remover ${p.hora}`;bR.style.cssText=`background:0 0;border:none;color:#e63946;cursor:pointer;font-size:14px;padding:0 4px;margin-left:5px;opacity:.7;transition:opacity .2s;`;bR.onmouseover=function(){this.style.opacity='1'};bE.onmouseout=function(){this.style.opacity='.7'};bR.onclick=()=>removerHorario(idx); bD.appendChild(bE);bD.appendChild(bR);i.appendChild(tD);i.appendChild(bD);r.appendChild(i)});l.appendChild(r)}}
 
 function iconeStatusPausa(status) {
     const n = normalizarStatusTexto(status);
@@ -689,7 +771,6 @@ function renderizarHistoricoLog(){
     }
     const itens = historicoPausas.slice().reverse();
     const f=document.createDocumentFragment();
-
     itens.forEach((p,idx)=>{
         const nome = nomeExibicaoStatus(p.tipo);
         const card=document.createElement('div');
@@ -729,7 +810,6 @@ function renderizarEstatisticas(){
         r[t].c++;
         r[t].s+=converterDuracaoParaSegundos(p.duracao);
     });
-
     const d=document.createElement('details'); d.style.marginTop='10px'; d.open=!1;
     const m=document.createElement('summary'); m.textContent='Estatisticas'; d.appendChild(m);
     const c=document.createElement('div'); c.style.cssText=`background-color:rgba(0,0,0,.25);padding:8px;border-radius:0 0 8px 8px;font-size:11px;`;
@@ -752,12 +832,11 @@ function renderizarEstatisticas(){
     c.appendChild(f); d.appendChild(c); s.appendChild(d);
 }
 
-// CORREÇÃO: CSS REESCRITO PARA CORES AZUIS SÓLIDAS
 function criarUI() {
-    const cId='pausa-script-container';let cA=document.getElementById(cId);if(cA)cA.remove(); const c=document.createElement('div');c.id=cId;document.body.appendChild(c);
+    const cId='pausa-script-container';let cA=document.getElementById(cId);if(cA)cA.remove();
+    const c=document.createElement('div');c.id=cId;document.body.appendChild(c);
     const pS=carregarPosicaoPainelLocalStorage(STORAGE_KEY_POS_MAIN);
     let cssPos = `position:fixed; ${pS ? (pS.top ? `top:${pS.top};left:${pS.left};` : `bottom:${pS.bottom};right:${pS.right};`) : 'bottom:30px;right:30px;'}`;
-
     c.style.cssText = `${cssPos} width:auto;height:auto;color:#E0E0E0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:0;border-radius:0;border:none;background:transparent;box-shadow:none;backdrop-filter:none;z-index:2147483647;cursor:pointer;user-select:none;transition:box-shadow .2s;box-sizing:border-box;will-change:transform;`;
 
     c.innerHTML=`<style>
@@ -857,11 +936,10 @@ function criarUI() {
 }
 
 function criarUIConfiguracoes() {
-    const cId='pausa-script-config-container';let cA=document.getElementById(cId);if(cA)cA.remove(); const cC=document.createElement('div');cC.id=cId;document.body.appendChild(cC); const pSC=carregarPosicaoPainelLocalStorage(STORAGE_KEY_POS_CONFIG);
+    const cId='pausa-script-config-container';let cA=document.getElementById(cId);if(cA)cA.remove();
+    const cC=document.createElement('div');cC.id=cId;document.body.appendChild(cC); const pSC=carregarPosicaoPainelLocalStorage(STORAGE_KEY_POS_CONFIG);
     let cssPos = `position:fixed; ${pSC ? (pSC.top ? `top:${pSC.top};left:${pSC.left};` : `bottom:${pSC.bottom};right:${pSC.right};`) : 'bottom:30px;right:340px;'}`;
-
     cC.style.cssText=`${cssPos} width:340px;background:rgba(25, 30, 40, 0.95);color:#E0E0E0;border:1px solid #0d6efd;border-radius:10px;padding:15px;z-index:2147483646;box-shadow:0 8px 20px rgba(0,0,0,0.5),0 0 10px rgba(13,110,253,0.2);font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:13px;height:auto;max-height:calc(100vh - 60px);backdrop-filter:blur(10px);transition:box-shadow .2s;display:none;overflow-y:auto;overflow-x:hidden;box-sizing:border-box;cursor:default;will-change:transform;color-scheme:dark;scrollbar-gutter:stable;`;
-
     cC.innerHTML=`<style>
     #${cId}, #${cId} *{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:#0d6efd rgba(0,0,0,.26)}
     #${cId}::-webkit-scrollbar, #${cId} *::-webkit-scrollbar{width:10px;height:10px}
@@ -898,7 +976,6 @@ function criarUIConfiguracoes() {
     <details open><summary>Editar Horarios</summary><div id="agendamento-edit"><div id="agendamento-lista"></div><div class="add-schedule-form"><input type="time" id="novo-horario-hora" required><input type="text" id="novo-horario-status" placeholder="Ex: Refeicao" required style="flex-grow:1;"><button id="btn-adicionar-horario">+</button></div></div></details>
     <details><summary>Historico de Pausas</summary><div id="historico-log" style="max-height:190px;overflow-y:auto;"></div></details>
     `;
-
     setupGPUDrag('pausa-script-config-container', 'pausa-script-config-header', STORAGE_KEY_POS_CONFIG);
 
     const bF=cC.querySelector('#btn-fechar-config');if(bF)bF.onclick=toggleVisibilidadeConfig;
@@ -910,29 +987,31 @@ function criarUIConfiguracoes() {
     renderizarAgendamentos();renderizarHistoricoLog();renderizarEstatisticas();
 }
 
-// CORREÇÃO: COR AZUL PARA TODO O TEXTO DE STATUS E RELÓGIO
 function atualizarUI() {
     const a=new Date,h=a.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-
     const tFlutuante=document.getElementById('top-bar-time');
     const tDot=document.getElementById('pausa-script-clock-dot');
     const tHeader = document.getElementById('pausa-script-header-clock');
     const sDisplay = document.getElementById('current-status');
 
-    let corFinal = '#0d6efd'; // Tudo azul padronizado
+    let corFinal = '#0d6efd';
 
-    if(tFlutuante){ tFlutuante.textContent = h; tFlutuante.style.color = corFinal; tFlutuante.style.textShadow = 'none'; }
-    if(tHeader) { tHeader.textContent = h; tHeader.style.color = corFinal; tHeader.style.textShadow = 'none'; }
-    if (tDot) { tDot.style.display = 'none'; tDot.style.animation = 'none'; tDot.style.opacity = '0'; }
+    if(tFlutuante){ tFlutuante.textContent = h; tFlutuante.style.color = corFinal; tFlutuante.style.textShadow = 'none';
+    }
+    if(tHeader) { tHeader.textContent = h; tHeader.style.color = corFinal; tHeader.style.textShadow = 'none';
+    }
+    if (tDot) { tDot.style.display = 'none'; tDot.style.animation = 'none'; tDot.style.opacity = '0';
+    }
 
     if(sDisplay){
-        let e=''; if(estadoAtual.ativa){const o=a.getTime()-estadoAtual.inicio.getTime();e=` (${formatarDuracao(Math.max(0,Math.round(o/1000)))})`;}
+        let e='';
+        if(estadoAtual.ativa){const o=a.getTime()-estadoAtual.inicio.getTime();e=` (${formatarDuracao(Math.max(0,Math.round(o/1000)))})`;}
         sDisplay.textContent=`${estadoAtual.tipo}${e}`;
         sDisplay.style.color = corFinal;
     }
 }
 
-console.log("[GERENCIADOR FUSAO] Iniciando (V56.23: Tudo Azul + Fix Scheduler)...");
+console.log("[GERENCIADOR FUSAO] Iniciando (V56.23: Tudo Azul + Fix Scheduler + Modo Stealth)...");
 setTimeout(() => {
     try {
         configNotificacao = carregarConfiguracoesNotificacaoLocalStorage();
@@ -954,5 +1033,4 @@ setTimeout(() => {
         document.addEventListener('click', desbloquearAudio, { once: true });
     } catch (error) { console.error("[GERENCIADOR] Erro:", error); }
 }, 2800);
-
 })();
