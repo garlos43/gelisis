@@ -1,5 +1,5 @@
 // =================================================================
-// Parceiro de Programacao: FUSAO ESTAVEL (V56.23 - AZUL SOLIDO + FIX AGENDAMENTO + MODO STEALTH)
+// Garro Pacadao:  ESTAVEL (V8 Biturbo)
 // =================================================================
 
 (function() {try {
