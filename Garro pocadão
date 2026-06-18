@@ -15,12 +15,12 @@ const SELECTORES = {
 };
 
 const PAUSAS_AGENDADAS_DEFAULT = [
-    { hora: "10:40", status: "Na fila" }, { hora: "11:55", status: "Pausa out" },
+    { hora: "10:40", status: "Na fila" },
     { hora: "12:00", status: "Descanso" }, { hora: "12:10", status: "Na fila" },
-    { hora: "13:25", status: "Pausa out" }, { hora: "13:30", status: "Refeição" },
-    { hora: "13:50", status: "Na fila" }, { hora: "15:15", status: "Pausa out" },
-    { hora: "15:20", status: "Descanso" }, { hora: "15:30", status: "Na fila" },
-    { hora: "16:55", status: "Pausa out" }, { hora: "17:00", status: "Logoff" }
+    { hora: "13:30", status: "Refeição" },
+    { hora: "13:50", status: "Na fila" },
+    { hora: "15:10", status: "Descanso" }, { hora: "15:20", status: "Na fila" },
+    { hora: "16:59", status: "Disponivel" }
 ];
 
 let estadoAtual = { tipo: 'Disponível', inicio: new Date(), ativa: false };
