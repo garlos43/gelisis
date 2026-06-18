@@ -1,5 +1,5 @@
 // =================================================================
-// Garro Pacadao : ESTAVEL (V8)
+// Parceiro de Programacao: FUSAO ESTAVEL (V56.24 - AZUL SOLIDO + FIX AGENDAMENTO + MODO STEALTH FORCADO)
 // =================================================================
 
 (function() {try {
@@ -425,60 +425,69 @@ function radarCliqueGenesys(textoAlvo) {
     return true;
 }
 
+// --- INICIO MODO STEALTH E FECHAMENTO AUTOMATICO FORÇADO ---
 
-// --- INICIO MODO STEALTH E FECHAMENTO AUTOMATICO ---
-
-// Função para esconder os menus do Genesys temporariamente durante a automação
 function ocultarMenusTemporariamente() {
     if (!document.getElementById('css-oculta-menu')) {
         const style = document.createElement('style');
         style.id = 'css-oculta-menu';
-        // Adicionados role="dialog" e seletores de popover que o Genesys usa no primeiro menu
+        // Seletores extremamente agressivos: jogando os menus para fora da tela e apagando do visual
         style.innerHTML = `
             gux-popover, gux-menu, .menu-container, [role="menu"], [role="dialog"], 
             .status-popover, .user-menu-container, [data-test-id*="menu"], 
-            [id*="popover"], .user-settings-popover {
+            [id*="popover"], .user-settings-popover, gux-list {
                 opacity: 0 !important;
+                position: fixed !important;
+                top: -9999px !important;
+                left: -9999px !important;
                 pointer-events: none !important;
                 transform: scale(0) !important;
+                z-index: -999999 !important;
                 transition: none !important;
             }
         `;
         document.head.appendChild(style);
-        
-        // Remove a camuflagem após 4.5 segundos
-        setTimeout(() => {
-            const estilo = document.getElementById('css-oculta-menu');
-            if (estilo) estilo.remove();
-        }, 4500);
     }
+    
+    // Garante que se a automação clicar várias vezes seguidas, o tempo reseta, não tirando a invisibilidade antes da hora
+    if (window.timerOcultarMenu) clearTimeout(window.timerOcultarMenu);
+    
+    window.timerOcultarMenu = setTimeout(() => {
+        const estilo = document.getElementById('css-oculta-menu');
+        if (estilo) estilo.remove();
+    }, 4500);
 }
 
-// Força o fechamento de qualquer popover ou menu aberto no Genesys
 function fecharMenusGenesys() {
-    // 1. Simula um clique no fundo da tela (backdrop)
+    // 1. Tenta métodos nativos primeiro (ESC e clique fora)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
     document.body.click();
     
-    // 2. Dispara a tecla ESC (fecha a maioria dos modais modernos)
-    document.dispatchEvent(new KeyboardEvent('keydown', { 
-        key: 'Escape', 
-        code: 'Escape', 
-        keyCode: 27, 
-        bubbles: true 
-    }));
-    
-    // 3. Fallback: se o botão principal ainda estiver marcado como aberto, clica nele de novo
-    const btnMenu = document.querySelector('#user-settings-button');
-    if (btnMenu && btnMenu.getAttribute('aria-expanded') === 'true') {
-        btnMenu.click();
-    }
+    // 2. Loop agressivo: Verifica o aria-expanded e ataca o botão até ele fechar de verdade
+    let tentativasFechamento = 0;
+    const checarFechamento = setInterval(() => {
+        const btnMenu = document.querySelector('#user-settings-button');
+        
+        // Se o botão ainda disser que o menu está aberto, clica nele!
+        if (btnMenu && btnMenu.getAttribute('aria-expanded') === 'true') {
+            try { btnMenu.click(); } catch(e) {}
+        } else {
+            // Se já não estiver aberto, aborta o loop e poupa memória
+            clearInterval(checarFechamento);
+        }
+        
+        tentativasFechamento++;
+        
+        // Limite máximo de 1.5 segundos vigiando para não criar loop infinito
+        if (tentativasFechamento > 10) {
+            clearInterval(checarFechamento);
+        }
+    }, 150);
 }
 
-// Lógica para pausas diretas (ex: Na Fila, Descanso)
 function executarLogicaMenuSimples(nomePausa) {
     ocultarMenusTemporariamente();
     
-    // Aguarda 50ms para a camuflagem fazer efeito antes do 1º clique
     setTimeout(() => {
         document.querySelector('#user-settings-button')?.click();
         setTimeout(() => {
@@ -486,7 +495,7 @@ function executarLogicaMenuSimples(nomePausa) {
             setTimeout(() => { 
                 radarCliqueGenesys(nomePausa); 
                 
-                // NOVO: Fecha o menu instantaneamente após clicar na pausa
+                // Dispara o loop de fechamento assim que terminar
                 setTimeout(() => { fecharMenusGenesys(); }, 150);
                 
             }, 600);
@@ -494,11 +503,9 @@ function executarLogicaMenuSimples(nomePausa) {
     }, 50);
 }
 
-// Lógica para pausas dentro de submenus (ex: Pausa out -> Refeição)
 function executarLogicaSubMenu(menuPrincipal, nomePausa) {
     ocultarMenusTemporariamente();
     
-    // Aguarda 50ms para a camuflagem fazer efeito antes do 1º clique
     setTimeout(() => {
         document.querySelector('#user-settings-button')?.click();
         setTimeout(() => {
@@ -513,7 +520,7 @@ function executarLogicaSubMenu(menuPrincipal, nomePausa) {
                             tentouClicar = true;
                             clearInterval(esperarPausa);
                             
-                            // NOVO: Fecha o menu instantaneamente após confirmar o clique na pausa final
+                            // Dispara o loop de fechamento assim que confirmar a pausa
                             setTimeout(() => { fecharMenusGenesys(); }, 150);
                         }
                     }
@@ -525,8 +532,7 @@ function executarLogicaSubMenu(menuPrincipal, nomePausa) {
     }, 50);
 }
 
-// --- FIM MODO STEALTH E FECHAMENTO AUTOMATICO ---
-
+// --- FIM MODO STEALTH E FECHAMENTO AUTOMATICO FORÇADO ---
 
 function executarLogicaNaFila() { executarLogicaMenuSimples('Em fila'); }
 function executarLogicaRefeicao() { executarLogicaMenuSimples('Refeição'); }
@@ -1003,7 +1009,7 @@ function atualizarUI() {
     }
 }
 
-console.log("[GERENCIADOR FUSAO] Iniciando (V56.23: Tudo Azul + Fix Scheduler + Modo Stealth)...");
+console.log("[GERENCIADOR FUSAO] Iniciando (V56.24: Tudo Azul + Fix Scheduler + Modo Stealth Force)...");
 setTimeout(() => {
     try {
         configNotificacao = carregarConfiguracoesNotificacaoLocalStorage();
