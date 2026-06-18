@@ -1,10 +1,13 @@
 // =================================================================
-// Parceiro de Programacao: FUSAO ESTAVEL (V56.25 )
+// Parceiro de Programacao:  ESTAVEL (V56.26)
 // =================================================================
 
 (function() {try {
     const ids = ['pausa-script-container', 'pausa-script-config-container', 'pausa-script-drag-overlay'];
     ids.forEach(id => { const el = document.getElementById(id); if(el) el.remove(); });
+    // DESTRÓI OS CRONÔMETROS FANTASMAS ANTIGOS PARA O TEMPO NÃO PULAR
+    if(window.gdpUIInterval) clearInterval(window.gdpUIInterval);
+    if(window.gdpScheduler) clearInterval(window.gdpScheduler);
 } catch (e) { console.warn(e); }
 
 const SELECTORES = {
@@ -25,7 +28,6 @@ const PAUSAS_AGENDADAS_DEFAULT = [
 
 let estadoAtual = { tipo: 'Disponível', inicio: new Date(), ativa: false };
 let isAgendamentoAtivo = false;
-let schedulerInterval = null;
 let ultimoEventoProcessado = null;
 let isConfigPainelAberto = false;
 let isAutomacaoPausada = false;
@@ -114,12 +116,10 @@ function clicarElemento(s, t = null) {
                 e = null;
             }
         }
-    } else { e = document.querySelector(s);
-    }
+    } else { e = document.querySelector(s); }
 
     if (e) {
-        try { e.click();
-        } catch(err) {}
+        try { e.click(); } catch(err) {}
         const c = new MouseEvent('click', { view: window, bubbles: true, cancelable: true });
         e.dispatchEvent(c);
         return true;
@@ -155,27 +155,18 @@ function adicionarAtalho(){document.addEventListener('keydown',function(e){const
 function mapearEexecutarAcao(s){
     const status = normalizarStatusTexto(s);
     switch(status){
-        case "na fila": iniciarNaFila(true);
-            break;
+        case "na fila": iniciarNaFila(true); break;
         case "disponivel": voltarDisponivel(true); break;
         case "pausa out": iniciarPausaOut(true); break;
-        case "pausa auricular":
-        case "pausa pessoal":
-        case "descanso": iniciarDescanso(true);
-            break;
+        case "pausa auricular": case "pausa pessoal": case "descanso": iniciarDescanso(true); break;
         case "refeicao": iniciarRefeicao(true); break;
         case "treinamento": iniciarTreinamento(true); break;
         case "reuniao": iniciarReuniao(true); break;
         case "logoff": realizarLogoff(true); break;
-        case "atividade backoffice":
-        case "ativ. backoffice":
-        case "backoffice": iniciarBackoffice(true);
-            break;
+        case "atividade backoffice": case "ativ. backoffice": case "backoffice": iniciarBackoffice(true); break;
         case "feedback": iniciarFeedback(true); break;
         case "particular": iniciarParticular(true); break;
-        case "questoes de saude":
-        case "saude": iniciarQuestoesSaude(true);
-            break;
+        case "questoes de saude": case "saude": iniciarQuestoesSaude(true); break;
     }
 }
 
@@ -212,10 +203,8 @@ function statusEhEquivalente(statusDesejado, statusTela) {
 function obterStatusAtualDaTela() {
     const candidatos = [];
     try { const toggle = document.querySelector(SELECTORES.MENU_STATUS_TOGGLE); if (toggle) candidatos.push(toggle.textContent); } catch(e) {}
-    try { document.querySelectorAll(SELECTORES.STATUS_LABEL_TEXT).forEach(el => { if (el && el.offsetParent !== null) candidatos.push(el.textContent); });
-    } catch(e) {}
-    try { document.querySelectorAll('[class*="presence"], [class*="status"], [aria-label*="status"], [aria-label*="Status"]').forEach(el => { if (el && el.offsetParent !== null) candidatos.push(el.textContent || el.getAttribute('aria-label') || ''); });
-    } catch(e) {}
+    try { document.querySelectorAll(SELECTORES.STATUS_LABEL_TEXT).forEach(el => { if (el && el.offsetParent !== null) candidatos.push(el.textContent); }); } catch(e) {}
+    try { document.querySelectorAll('[class*="presence"], [class*="status"], [aria-label*="status"], [aria-label*="Status"]').forEach(el => { if (el && el.offsetParent !== null) candidatos.push(el.textContent || el.getAttribute('aria-label') || ''); }); } catch(e) {}
     return candidatos.map(t => (t || '').trim()).filter(Boolean).join(' | ');
 }
 
@@ -282,7 +271,7 @@ function verificarEExecutarAgendamentos(){
 function iniciarSchedulerSincronizado(){
     if(!isAgendamentoAtivo) return;
     verificarEExecutarAgendamentos();
-    schedulerInterval = setInterval(verificarEExecutarAgendamentos, 5000);
+    window.gdpScheduler = setInterval(verificarEExecutarAgendamentos, 5000);
 }
 
 function toggleAgendamento(forceState = null){
@@ -291,18 +280,17 @@ function toggleAgendamento(forceState = null){
     if (forceState !== null) novoEstado = forceState;
 
     if(!novoEstado){
-        if(schedulerInterval) clearInterval(schedulerInterval);
-        schedulerInterval=null;
+        if(window.gdpScheduler) clearInterval(window.gdpScheduler);
+        window.gdpScheduler=null;
         isAgendamentoAtivo=!1; isAutomacaoPausada=!1;
-        if(b){b.textContent="Ligar Automação";b.style.backgroundColor = '#0d6efd';}
+        if(b){b.textContent="Ligar Automação";b.style.backgroundColor = '#2c2c2c';b.style.borderColor = '#444';}
         if(p)p.style.display='none';
     }else{
         PAUSAS_AGENDADAS=carregarHorariosLocalStorage().map(p => ({...p, status: normalizarStatusTexto(p.status) === 'pausa auricular' ? 'Descanso' : p.status}));
         salvarHorariosLocalStorage(PAUSAS_AGENDADAS);
         ultimoEventoProcessado=null; isAutomacaoPausada=!1; isAgendamentoAtivo=!0;
-        if(b){b.textContent="Desligar Automação";b.style.backgroundColor = '#0b5ed7';}
-        if(p){ p.textContent="Pausar ⏸️";p.style.backgroundColor = '#0a58ca';p.style.display='inline-block';
-        }
+        if(b){b.textContent="Desligar Automação";b.style.backgroundColor = '#8B0000';b.style.borderColor = '#D40000';}
+        if(p){ p.textContent="Pausar ⏸️";p.style.backgroundColor = '#5c0000';p.style.display='inline-block';}
         iniciarSchedulerSincronizado();
     }
     salvarStatusAutomacaoLocalStorage(isAgendamentoAtivo);
@@ -314,9 +302,9 @@ function togglePausaAutomacao(){
     isAutomacaoPausada=!isAutomacaoPausada;
     const b=document.getElementById('btn-pause-resume-agendamento');
     if(isAutomacaoPausada){
-        if(b){b.textContent="Retomar ▶️";b.style.backgroundColor = '#0d6efd';}
+        if(b){b.textContent="Retomar ▶️";b.style.backgroundColor = '#2c2c2c';}
     }else{
-        if(b){b.textContent="Pausar ⏸️";b.style.backgroundColor = '#0a58ca';}
+        if(b){b.textContent="Pausar ⏸️";b.style.backgroundColor = '#5c0000';}
         verificarEExecutarAgendamentos();
     }
     atualizarUI();
@@ -335,8 +323,7 @@ function adicionarNovoHorario(){
     if (indiceEdicao >= 0 && indiceEdicao < PAUSAS_AGENDADAS.length) {
         PAUSAS_AGENDADAS.splice(indiceEdicao, 1);
         indiceEdicao = -1;
-        if (btn) { btn.innerHTML = "+"; btn.style.backgroundColor = "#0d6efd"; btn.style.color = "#fff";
-        }
+        if (btn) { btn.innerHTML = "+"; btn.style.backgroundColor = "#D40000"; btn.style.color = "#fff"; }
     } else {
         if(PAUSAS_AGENDADAS.some(p=>p.hora===h)){
             if(!confirm(`Ja existe ${h}. Substituir?`))return;
@@ -367,8 +354,7 @@ function removerHorario(idx){
         if(indiceEdicao === idx) {
             indiceEdicao = -1;
             const btn=document.getElementById('btn-adicionar-horario'),iH=document.getElementById('novo-horario-hora'),iS=document.getElementById('novo-horario-status');
-            if(btn) { btn.innerHTML = "+"; btn.style.backgroundColor = "#0d6efd"; btn.style.color = "#fff";
-            }
+            if(btn) { btn.innerHTML = "+"; btn.style.backgroundColor = "#D40000"; btn.style.color = "#fff"; }
             if(iH) iH.value=''; if(iS) iS.value='';
         }
     }
@@ -383,8 +369,7 @@ function carregarHorarioParaEdicao(idx){
     iH.value=item.hora; iS.value=nomeExibicaoStatus(item.status);
     iS.focus(); iS.select();
     indiceEdicao = idx;
-    if (btn) { btn.innerHTML = "💾"; btn.style.backgroundColor = "#0b5ed7";
-    }
+    if (btn) { btn.innerHTML = "💾"; btn.style.backgroundColor = "#A30000"; }
 }
 
 function radarCliqueGenesys(textoAlvo) {
@@ -431,8 +416,6 @@ function ocultarMenusTemporariamente() {
     if (!document.getElementById('css-oculta-menu')) {
         const style = document.createElement('style');
         style.id = 'css-oculta-menu';
-        // Apenas opacidade para não estragar a geometria da página e permitir o clique silencioso.
-        // Adicionados overlay-containers para apagar até os popovers nativos de sombra.
         style.innerHTML = `
             .cdk-overlay-container,
             .gux-popup-container,
@@ -454,7 +437,6 @@ function ocultarMenusTemporariamente() {
         document.head.appendChild(style);
     }
     
-    // Reseta o tempo se a função for chamada seguidamente
     if (window.timerOcultarMenu) clearTimeout(window.timerOcultarMenu);
     
     window.timerOcultarMenu = setTimeout(() => {
@@ -464,29 +446,19 @@ function ocultarMenusTemporariamente() {
 }
 
 function fecharMenusGenesys() {
-    // 1. Simula um clique no fundo da tela (backdrop)
     document.body.click();
-    
-    // 2. Dispara a tecla ESC no corpo da página para forçar modais a fecharem
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
     
-    // 3. Loop de insistência: Vigia o botão do perfil
     let tentativasFechamento = 0;
     const checarFechamento = setInterval(() => {
         const btnMenu = document.querySelector('#user-settings-button');
         
-        // Verifica se o painel está constando como aberto
         if (btnMenu && btnMenu.getAttribute('aria-expanded') === 'true') {
-            
-            // Dispara ESC diretamente apontado para o botão (mais eficiente que clicar de volta)
             btnMenu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
-            
-            // Se já tentamos mandar o ESC 3 vezes e ele ainda teima em ficar aberto, força o click clássico
             if (tentativasFechamento > 2) {
                 try { btnMenu.click(); } catch(e) {}
             }
         } else {
-            // Fechou! Cancela o loop
             clearInterval(checarFechamento);
         }
         
@@ -506,10 +478,7 @@ function executarLogicaMenuSimples(nomePausa) {
             document.querySelector('#presence-button')?.click();
             setTimeout(() => { 
                 radarCliqueGenesys(nomePausa); 
-                
-                // Dispara a rotina de fechar imediatamente após confirmar a pausa
                 setTimeout(() => { fecharMenusGenesys(); }, 150);
-                
             }, 600);
         }, 600);
     }, 50);
@@ -531,8 +500,6 @@ function executarLogicaSubMenu(menuPrincipal, nomePausa) {
                         if (radarCliqueGenesys(nomePausa)) {
                             tentouClicar = true;
                             clearInterval(esperarPausa);
-                            
-                            // Dispara a rotina de fechar imediatamente após confirmar a pausa final
                             setTimeout(() => { fecharMenusGenesys(); }, 150);
                         }
                     }
@@ -718,14 +685,13 @@ function toggleVisibilidade() {
         o.style.display = 'block'; i.style.display = 'none';
         const lE = 300;
         c.style.width = lE + 'px'; c.style.padding = '15px'; c.style.cursor = 'default'; c.style.fontFamily = "'Segoe UI',Tahoma,Geneva,Verdana,sans-serif";
-        c.style.background='rgba(25, 30, 40, 0.95)';
-        c.style.border='1px solid #0d6efd'; c.style.boxShadow='0 8px 20px rgba(0,0,0,0.5),0 0 10px rgba(13,110,253,0.2)';
+        c.style.background='rgba(30, 30, 30, 0.96)';
+        c.style.border='1px solid #444'; c.style.boxShadow='0 8px 25px rgba(0,0,0,0.6)';
         c.style.backdropFilter='blur(10px)'; c.style.borderRadius='10px';
         const h = c.querySelector('#pausa-script-header');
         if (h) h.style.cursor = 'pointer';
         if(c.style.top&&c.style.left){let cT=parseInt(c.style.top,10),cL=parseInt(c.style.left,10);setTimeout(()=>{const hE=c.offsetHeight;const mL=window.innerWidth-lE-m;if(cL>mL){c.style.left=mL+'px'}if(cL<m){c.style.left=m+'px'}const mT=window.innerHeight-hE-m;if(cT>mT){c.style.top=mT+'px'}if(cT<m){c.style.top=m+'px'}},10)}
-        else { const r=c.getBoundingClientRect();c.style.left=r.left+'px';c.style.top=r.top+'px';c.style.bottom = '';
-        c.style.right = ''; }
+        else { const r=c.getBoundingClientRect();c.style.left=r.left+'px';c.style.top=r.top+'px';c.style.bottom = ''; c.style.right = ''; }
     }
 }
 
@@ -737,8 +703,7 @@ function toggleVisibilidadeConfig(){
     if(!isConfigPainelAberto) {
         indiceEdicao = -1;
         const btn=document.getElementById('btn-adicionar-horario'),iH=document.getElementById('novo-horario-hora'),iS=document.getElementById('novo-horario-status');
-        if(btn) { btn.innerHTML = "+";
-        btn.style.backgroundColor = "#0d6efd"; btn.style.color = "#fff"; }
+        if(btn) { btn.innerHTML = "+"; btn.style.backgroundColor = "#D40000"; btn.style.color = "#fff"; }
         if(iH) iH.value=''; if(iS) iS.value='';
     } else {
         renderizarAgendamentos();renderizarHistoricoLog();renderizarEstatisticas();
@@ -751,8 +716,8 @@ function nomeExibicaoStatus(status) {
     return status;
 }
 
-function renderizarAgendamentos(){const l=document.getElementById('agendamento-lista');if(!l)return; l.innerHTML='';if(PAUSAS_AGENDADAS.length===0){l.innerHTML='<p style="color:#999;margin:5px 0;font-size:11px;text-align:center;">Nenhum horario agendado.</p>'}else{const r=document.createDocumentFragment();PAUSAS_AGENDADAS.forEach((p,idx)=>{const i=document.createElement('div');i.style.cssText=`display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed #ffffff15;padding:4px 2px;font-size:11px;`;const tD=document.createElement('div');tD.style.flexGrow='1';tD.innerHTML=`<strong>${p.hora}</strong>: ${nomeExibicaoStatus(p.status)}`;const bD=document.createElement('div');bD.style.flexShrink='0';bD.style.marginLeft='10px'; const bE=document.createElement('button');bE.innerHTML='✏️';bE.title=`Editar ${p.hora}`;bE.style.cssText=`background:0 0;border:none;color:#0d6efd;cursor:pointer;font-size:14px;padding:0 4px;opacity:.7;transition:opacity .2s;`;bE.onmouseover=function(){this.style.opacity='1'};bE.onmouseout=function(){this.style.opacity='.7'};bE.onclick=()=>carregarHorarioParaEdicao(idx);
-    const bR=document.createElement('button');bR.innerHTML='❌';bR.title=`Remover ${p.hora}`;bR.style.cssText=`background:0 0;border:none;color:#e63946;cursor:pointer;font-size:14px;padding:0 4px;margin-left:5px;opacity:.7;transition:opacity .2s;`;bR.onmouseover=function(){this.style.opacity='1'};bE.onmouseout=function(){this.style.opacity='.7'};bR.onclick=()=>removerHorario(idx); bD.appendChild(bE);bD.appendChild(bR);i.appendChild(tD);i.appendChild(bD);r.appendChild(i)});l.appendChild(r)}}
+function renderizarAgendamentos(){const l=document.getElementById('agendamento-lista');if(!l)return; l.innerHTML='';if(PAUSAS_AGENDADAS.length===0){l.innerHTML='<p style="color:#888;margin:5px 0;font-size:11px;text-align:center;">Nenhum horario agendado.</p>'}else{const r=document.createDocumentFragment();PAUSAS_AGENDADAS.forEach((p,idx)=>{const i=document.createElement('div');i.style.cssText=`display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed #444;padding:4px 2px;font-size:11px;color:#E0E0E0;`;const tD=document.createElement('div');tD.style.flexGrow='1';tD.innerHTML=`<strong style="color:#FFF;">${p.hora}</strong>: ${nomeExibicaoStatus(p.status)}`;const bD=document.createElement('div');bD.style.flexShrink='0';bD.style.marginLeft='10px'; const bE=document.createElement('button');bE.innerHTML='✏️';bE.title=`Editar ${p.hora}`;bE.style.cssText=`background:0 0;border:none;color:#D40000;cursor:pointer;font-size:14px;padding:0 4px;opacity:.7;transition:opacity .2s;`;bE.onmouseover=function(){this.style.opacity='1'};bE.onmouseout=function(){this.style.opacity='.7'};bE.onclick=()=>carregarHorarioParaEdicao(idx);
+    const bR=document.createElement('button');bR.innerHTML='❌';bR.title=`Remover ${p.hora}`;bR.style.cssText=`background:0 0;border:none;color:#D40000;cursor:pointer;font-size:14px;padding:0 4px;margin-left:5px;opacity:.7;transition:opacity .2s;`;bR.onmouseover=function(){this.style.opacity='1'};bE.onmouseout=function(){this.style.opacity='.7'};bR.onclick=()=>removerHorario(idx); bD.appendChild(bE);bD.appendChild(bR);i.appendChild(tD);i.appendChild(bD);r.appendChild(i)});l.appendChild(r)}}
 
 function iconeStatusPausa(status) {
     const n = normalizarStatusTexto(status);
@@ -776,7 +741,7 @@ function renderizarHistoricoLog(){
     if(!l)return;
     l.innerHTML='';
     if(historicoPausas.length===0){
-        l.innerHTML='<p style="color:#999;margin:5px 0;font-size:11px;text-align:center;">Nenhum registro ainda.</p>';
+        l.innerHTML='<p style="color:#888;margin:5px 0;font-size:11px;text-align:center;">Nenhum registro ainda.</p>';
         return;
     }
     const itens = historicoPausas.slice().reverse();
@@ -784,21 +749,21 @@ function renderizarHistoricoLog(){
     itens.forEach((p,idx)=>{
         const nome = nomeExibicaoStatus(p.tipo);
         const card=document.createElement('div');
-        card.style.cssText=`display:grid;grid-template-columns:24px 1fr 96px;gap:8px;align-items:center;padding:7px 6px;border-radius:8px;margin-bottom:6px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);font-size:11px;line-height:1.25;`;
+        card.style.cssText=`display:grid;grid-template-columns:24px 1fr 96px;gap:8px;align-items:center;padding:7px 6px;border-radius:8px;margin-bottom:6px;background:rgba(255,255,255,.05);border:1px solid #444;font-size:11px;line-height:1.25;`;
         if(idx===0){
-            card.style.background='rgba(13,110,253,.15)';
-            card.style.borderColor='rgba(13,110,253,.4)';
+            card.style.background='rgba(212,0,0,.1)';
+            card.style.borderColor='rgba(212,0,0,.4)';
         }
         card.innerHTML=`
-        <div style="width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.28);font-size:13px;">${iconeStatusPausa(nome)}</div>
+        <div style="width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);font-size:13px;">${iconeStatusPausa(nome)}</div>
         <div style="min-width:0;">
         <div style="display:flex;align-items:center;gap:6px;min-width:0;">
-        <strong style="color:#f4f8fb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nome}</strong>
-        ${idx===0 ? '<span style="font-size:9px;color:#0d6efd;border:1px solid rgba(13,110,253,.5);border-radius:999px;padding:1px 5px;background:rgba(13,110,253,.1);">ultima</span>' : ''}
+        <strong style="color:#FFF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nome}</strong>
+        ${idx===0 ? '<span style="font-size:9px;color:#D40000;border:1px solid rgba(212,0,0,.5);border-radius:999px;padding:1px 5px;background:rgba(212,0,0,.1);">ultima</span>' : ''}
         </div>
-        <div style="color:#a9b7c6;margin-top:2px;">${p.inicio} → ${p.fim}</div>
+        <div style="color:#999;margin-top:2px;">${p.inicio} → ${p.fim}</div>
         </div>
-        <div style="min-width:96px;text-align:right;color:#0d6efd;font-weight:800;font-size:13px;line-height:1.1;font-family:'Consolas','Courier New',monospace;font-variant-numeric:tabular-nums;letter-spacing:.35px;white-space:nowrap;padding:3px 0 3px 8px;">${p.duracao}</div>
+        <div style="min-width:96px;text-align:right;color:#D40000;font-weight:800;font-size:13px;line-height:1.1;font-family:'Consolas','Courier New',monospace;font-variant-numeric:tabular-nums;letter-spacing:.35px;white-space:nowrap;padding:3px 0 3px 8px;">${p.duracao}</div>
         `;
         f.appendChild(card);
     });
@@ -810,7 +775,7 @@ function renderizarEstatisticas(){
     if(!s)return;
     s.innerHTML='';
     if(historicoPausas.length===0){
-        s.innerHTML='<div style="background:rgba(0,0,0,.25);border:1px solid rgba(13,110,253,.2);border-radius:8px;padding:10px;color:#999;font-style:italic;font-size:11px;text-align:center;">Sem estatisticas.</div>';
+        s.innerHTML='<div style="background:rgba(0,0,0,.3);border:1px solid #444;border-radius:8px;padding:10px;color:#888;font-style:italic;font-size:11px;text-align:center;">Sem estatisticas.</div>';
         return;
     }
     const r={};
@@ -822,7 +787,7 @@ function renderizarEstatisticas(){
     });
     const d=document.createElement('details'); d.style.marginTop='10px'; d.open=!1;
     const m=document.createElement('summary'); m.textContent='Estatisticas'; d.appendChild(m);
-    const c=document.createElement('div'); c.style.cssText=`background-color:rgba(0,0,0,.25);padding:8px;border-radius:0 0 8px 8px;font-size:11px;`;
+    const c=document.createElement('div'); c.style.cssText=`background-color:rgba(0,0,0,.3);padding:8px;border-radius:0 0 8px 8px;font-size:11px;`;
     const f=document.createDocumentFragment();
 
     const k=Object.keys(r).sort((a,b)=>r[b].s-r[a].s || a.localeCompare(b));
@@ -830,12 +795,12 @@ function renderizarEstatisticas(){
         const o=r[t];
         const u=formatarDuracao(o.s);
         const i=document.createElement('div');
-        i.style.cssText=`display:grid;grid-template-columns:24px 1fr 96px;gap:8px;align-items:center;padding:6px 4px;border-bottom:1px dashed rgba(255,255,255,.10);line-height:1.25;`;
+        i.style.cssText=`display:grid;grid-template-columns:24px 1fr 96px;gap:8px;align-items:center;padding:6px 4px;border-bottom:1px dashed #444;line-height:1.25;`;
         if(x===k.length-1)i.style.borderBottom='none';
         i.innerHTML=`
-        <span style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.28);font-size:13px;">${iconeStatusPausa(t)}</span>
-        <strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f4f8fb;">${t} <span style="color:#93a4b6;font-weight:600;">(x${o.c})</span></strong>
-        <span style="min-width:96px;text-align:right;color:#0d6efd;font-weight:800;font-size:13px;line-height:1.1;font-family:'Consolas','Courier New',monospace;font-variant-numeric:tabular-nums;letter-spacing:.35px;white-space:nowrap;padding-left:8px;">${u}</span>
+        <span style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);font-size:13px;">${iconeStatusPausa(t)}</span>
+        <strong style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#FFF;">${t} <span style="color:#888;font-weight:600;">(x${o.c})</span></strong>
+        <span style="min-width:96px;text-align:right;color:#D40000;font-weight:800;font-size:13px;line-height:1.1;font-family:'Consolas','Courier New',monospace;font-variant-numeric:tabular-nums;letter-spacing:.35px;white-space:nowrap;padding-left:8px;">${u}</span>
         `;
         f.appendChild(i);
     });
@@ -849,20 +814,21 @@ function criarUI() {
     let cssPos = `position:fixed; ${pS ? (pS.top ? `top:${pS.top};left:${pS.left};` : `bottom:${pS.bottom};right:${pS.right};`) : 'bottom:30px;right:30px;'}`;
     c.style.cssText = `${cssPos} width:auto;height:auto;color:#E0E0E0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:0;border-radius:0;border:none;background:transparent;box-shadow:none;backdrop-filter:none;z-index:2147483647;cursor:pointer;user-select:none;transition:box-shadow .2s;box-sizing:border-box;will-change:transform;`;
 
+    // TEMA ROSSO CORSA E DARK GRAY
     c.innerHTML=`<style>
     #${cId} *{box-sizing:border-box}
-    #${cId} .script-btn {display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 15px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#FFFFFF;text-shadow:0 1px 2px rgba(0,0,0,0.3);background-color:#0d6efd;box-shadow:0 3px 5px rgba(0,0,0,0.3),inset 0 1px 1px rgba(255,255,255,0.1);transition:all 0.15s ease-out;width:100%}
-    #${cId} .script-btn:hover {filter:brightness(1.1);transform:translateY(-2px);background-color:#0b5ed7;}
-    #${cId} .script-btn:active {transform:translateY(1px);filter:brightness(0.95)}
+    #${cId} .script-btn {display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 15px;border:1px solid #444;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#E0E0E0;background-color:#2a2a2a;box-shadow:0 2px 4px rgba(0,0,0,0.2);transition:all 0.15s ease-out;width:100%}
+    #${cId} .script-btn:hover {background-color:#D40000;border-color:#D40000;color:#FFF;transform:translateY(-2px);box-shadow:0 4px 8px rgba(212,0,0,0.3);}
+    #${cId} .script-btn:active {transform:translateY(1px);filter:brightness(0.85)}
     
-    #${cId} #pausa-script-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(13,110,253,0.4);cursor:pointer}
-    #${cId} #pausa-script-header h3{color:#0d6efd;margin:0;font-size:16px;font-weight:600}
-    #${cId} #pausa-script-header span#btn-abrir-config{cursor:pointer;color:#0d6efd;font-size:20px;margin-right:12px}
-    #${cId} #pausa-script-header span#btn-minimizar{cursor:pointer;color:#0d6efd;font-size:16px;font-weight:700}
-    #${cId} #status-display{background-color:rgba(0,0,0,0.2);border:1px solid rgba(13,110,253,0.3);color:#FFF;padding:10px;border-radius:8px;margin-bottom:15px;text-align:center;font-size:14px}
-    #${cId} #current-status{font-weight:700}
+    #${cId} #pausa-script-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(212,0,0,0.4);cursor:pointer}
+    #${cId} #pausa-script-header h3{color:#D40000;margin:0;font-size:16px;font-weight:600}
+    #${cId} #pausa-script-header span#btn-abrir-config{cursor:pointer;color:#D40000;font-size:20px;margin-right:12px}
+    #${cId} #pausa-script-header span#btn-minimizar{cursor:pointer;color:#D40000;font-size:16px;font-weight:700}
+    #${cId} #status-display{background-color:rgba(0,0,0,0.3);border:1px solid #444;color:#FFF;padding:10px;border-radius:8px;margin-bottom:15px;text-align:center;font-size:14px}
+    #${cId} #current-status{font-weight:700;color:#D40000;}
     #${cId} #pausa-script-icone{display:flex;align-items:center;justify-content:center;width:auto;height:auto;cursor:pointer;background:transparent;border:none;box-shadow:none;padding:0;margin:0;}
-    #${cId} #top-bar-time{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:25px;font-weight:700;letter-spacing:1px;color:#0d6efd;background:transparent;border:none;box-shadow:none;padding:0;margin:0;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums;}
+    #${cId} #top-bar-time{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:25px;font-weight:700;letter-spacing:1px;color:#D40000;background:transparent;border:none;box-shadow:none;padding:0;margin:0;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums;}
     #${cId} #pausa-script-clock-dot{display:none!important;width:0;height:0;opacity:0;pointer-events:none;}
     </style>
 
@@ -871,11 +837,11 @@ function criarUI() {
     <div id="pausa-script-header">
     <h3>🛠️ Gerenciador</h3>
     <div style="display:flex;align-items:center;gap:12px;transform:translateY(3px);">
-    <span id="pausa-script-header-clock" style="font-size:16px;font-family:'Courier New',Courier,monospace;color:#0d6efd;line-height:1;">--:--:--</span>
+    <span id="pausa-script-header-clock" style="font-size:16px;font-family:'Courier New',Courier,monospace;color:#D40000;line-height:1;">--:--:--</span>
     <div style="flex-shrink:0;"><span id="btn-abrir-config" title="Configurações">⚙️</span><span id="btn-minimizar" title="Fechar Painel">❌</span></div>
     </div>
     </div>
-    <div id="status-display">Status: <strong id="current-status" style="color:#0d6efd;">${estadoAtual.tipo}</strong></div>
+    <div id="status-display">Status: <strong id="current-status">${estadoAtual.tipo}</strong></div>
     <div style="margin-bottom:15px;">
     <button id="btn-toggle-agendamento" class="script-btn">Ligar Automação</button>
     <button id="btn-pause-resume-agendamento" class="script-btn" style="display:none; margin-top: 8px;">Pausar ⏸️</button>
@@ -932,54 +898,54 @@ function criarUI() {
     const bTg=c.querySelector('#btn-toggle-agendamento'),bP=c.querySelector('#btn-pause-resume-agendamento');
     if(bTg&&bP){
         if(isAgendamentoAtivo){
-            bTg.textContent="Desligar Automação";bTg.style.backgroundColor = '#0b5ed7';bP.style.display='block';
-            if(isAutomacaoPausada){bP.textContent="Retomar ▶️";bP.style.backgroundColor = '#0d6efd';}
-            else{bP.textContent="Pausar ⏸️";bP.style.backgroundColor = '#0a58ca';}
+            bTg.textContent="Desligar Automação";bTg.style.backgroundColor = '#8B0000';bTg.style.borderColor = '#D40000';bP.style.display='block';
+            if(isAutomacaoPausada){bP.textContent="Retomar ▶️";bP.style.backgroundColor = '#2c2c2c';}
+            else{bP.textContent="Pausar ⏸️";bP.style.backgroundColor = '#5c0000';}
         }else{
-            bTg.textContent="Ligar Automação";bTg.style.backgroundColor = '#0d6efd';bP.style.display='none';
+            bTg.textContent="Ligar Automação";bTg.style.backgroundColor = '#2a2a2a';bTg.style.borderColor = '#444';bP.style.display='none';
         }
     }
 
     atualizarUI();
     adicionarAtalho();
-    setInterval(atualizarUI,1000);
+    window.gdpUIInterval = setInterval(atualizarUI,1000);
 }
 
 function criarUIConfiguracoes() {
     const cId='pausa-script-config-container';let cA=document.getElementById(cId);if(cA)cA.remove();
     const cC=document.createElement('div');cC.id=cId;document.body.appendChild(cC); const pSC=carregarPosicaoPainelLocalStorage(STORAGE_KEY_POS_CONFIG);
     let cssPos = `position:fixed; ${pSC ? (pSC.top ? `top:${pSC.top};left:${pSC.left};` : `bottom:${pSC.bottom};right:${pSC.right};`) : 'bottom:30px;right:340px;'}`;
-    cC.style.cssText=`${cssPos} width:340px;background:rgba(25, 30, 40, 0.95);color:#E0E0E0;border:1px solid #0d6efd;border-radius:10px;padding:15px;z-index:2147483646;box-shadow:0 8px 20px rgba(0,0,0,0.5),0 0 10px rgba(13,110,253,0.2);font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:13px;height:auto;max-height:calc(100vh - 60px);backdrop-filter:blur(10px);transition:box-shadow .2s;display:none;overflow-y:auto;overflow-x:hidden;box-sizing:border-box;cursor:default;will-change:transform;color-scheme:dark;scrollbar-gutter:stable;`;
+    cC.style.cssText=`${cssPos} width:340px;background:rgba(30, 30, 30, 0.96);color:#E0E0E0;border:1px solid #444;border-radius:10px;padding:15px;z-index:2147483646;box-shadow:0 8px 25px rgba(0,0,0,0.6);font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:13px;height:auto;max-height:calc(100vh - 60px);backdrop-filter:blur(10px);transition:box-shadow .2s;display:none;overflow-y:auto;overflow-x:hidden;box-sizing:border-box;cursor:default;will-change:transform;color-scheme:dark;scrollbar-gutter:stable;`;
     cC.innerHTML=`<style>
-    #${cId}, #${cId} *{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:#0d6efd rgba(0,0,0,.26)}
+    #${cId}, #${cId} *{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:#D40000 rgba(0,0,0,.26)}
     #${cId}::-webkit-scrollbar, #${cId} *::-webkit-scrollbar{width:10px;height:10px}
-    #${cId}::-webkit-scrollbar-track, #${cId} *::-webkit-scrollbar-track{background:rgba(0,0,0,.28);border-radius:999px}
-    #${cId}::-webkit-scrollbar-thumb, #${cId} *::-webkit-scrollbar-thumb{background-color:#0d6efd;border-radius:999px;border:2px solid rgba(0,0,0,.18)}
-    #${cId}::-webkit-scrollbar-thumb:hover, #${cId} *::-webkit-scrollbar-thumb:hover{background-color:#0b5ed7;}
+    #${cId}::-webkit-scrollbar-track, #${cId} *::-webkit-scrollbar-track{background:rgba(0,0,0,.3);border-radius:999px}
+    #${cId}::-webkit-scrollbar-thumb, #${cId} *::-webkit-scrollbar-thumb{background-color:#D40000;border-radius:999px;border:2px solid rgba(0,0,0,.18)}
+    #${cId}::-webkit-scrollbar-thumb:hover, #${cId} *::-webkit-scrollbar-thumb:hover{background-color:#A30000;}
     #${cId}::-webkit-scrollbar-corner, #${cId} *::-webkit-scrollbar-corner{background:rgba(0,0,0,.22)}
     #${cId} input, #${cId} select, #${cId} textarea{color-scheme:dark}
     
-    #${cId} details{margin-top:15px;border:1px solid rgba(13,110,253,.2);border-radius:8px;background-color:rgba(0,0,0,.2);overflow:hidden}
-    #${cId} summary{padding:10px 12px;cursor:pointer;color:#0d6efd;font-weight:600;list-style:none;display:flex;align-items:center}
+    #${cId} details{margin-top:15px;border:1px solid #444;border-radius:8px;background-color:rgba(0,0,0,.3);overflow:hidden}
+    #${cId} summary{padding:10px 12px;cursor:pointer;color:#D40000;font-weight:600;list-style:none;display:flex;align-items:center}
     #${cId} summary::before{content:'▶';margin-right:8px;font-size:10px;transition:transform .2s;display:inline-block}
     #${cId} details[open]>summary::before{transform:rotate(90deg)}
-    #${cId} details>div{padding:12px;border-top:1px solid rgba(13,110,253,.2)}
+    #${cId} details>div{padding:12px;border-top:1px solid #444}
     #${cId} .add-schedule-form{display:flex;gap:8px;margin-top:10px;align-items:center;min-width:0}
-    #${cId} .add-schedule-form input{background-color:rgba(0,0,0,.32);border:1px solid rgba(13,110,253,.4);color:#E0E0E0;padding:8px;border-radius:6px;font-size:13px;min-width:0;outline:none;box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
-    #${cId} .add-schedule-form input:focus, #${cId} #notif-tempo:focus{border-color:#0d6efd;box-shadow:0 0 0 2px rgba(13,110,253,.2), inset 0 1px 2px rgba(0,0,0,.35)}
+    #${cId} .add-schedule-form input{background-color:rgba(0,0,0,.4);border:1px solid #444;color:#FFF;padding:8px;border-radius:6px;font-size:13px;min-width:0;outline:none;box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
+    #${cId} .add-schedule-form input:focus, #${cId} #notif-tempo:focus{border-color:#D40000;box-shadow:0 0 0 2px rgba(212,0,0,.2), inset 0 1px 2px rgba(0,0,0,.35)}
     #${cId} #novo-horario-hora{width:98px;flex:0 0 98px}
     #${cId} #novo-horario-status{flex:1 1 auto;min-width:0}
-    #${cId} .add-schedule-form button{flex-shrink:0;padding:8px 14px!important;width:auto!important;background-color:#0d6efd !important;font-weight:700;border:none;border-radius:8px;transition:all 0.3s;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4);cursor:pointer;}
-    #${cId} .add-schedule-form button:hover{background-color:#0b5ed7 !important;}
-    #${cId} #agendamento-lista, #${cId} #historico-log{max-width:100%;overflow-y:auto;overflow-x:hidden;margin-bottom:10px;border-radius:8px;padding:8px;background-color:rgba(0,0,0,.25);box-shadow:inset 0 1px 3px rgba(0,0,0,.25)}
+    #${cId} .add-schedule-form button{flex-shrink:0;padding:8px 14px!important;width:auto!important;background-color:#D40000 !important;font-weight:700;border:none;border-radius:8px;transition:all 0.3s;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4);cursor:pointer;}
+    #${cId} .add-schedule-form button:hover{background-color:#A30000 !important;}
+    #${cId} #agendamento-lista, #${cId} #historico-log{max-width:100%;overflow-y:auto;overflow-x:hidden;margin-bottom:10px;border-radius:8px;padding:8px;background-color:rgba(0,0,0,.3);box-shadow:inset 0 1px 3px rgba(0,0,0,.25)}
     #${cId} #historico-log{margin-bottom:0}
-    #${cId} #notif-tempo{width:58px;background-color:rgba(0,0,0,.32);border:1px solid rgba(13,110,253,.4);color:#E0E0E0;padding:6px 8px;border-radius:6px}
-    #${cId} input[type='checkbox']{accent-color:#0d6efd}
+    #${cId} #notif-tempo{width:58px;background-color:rgba(0,0,0,.4);border:1px solid #444;color:#FFF;padding:6px 8px;border-radius:6px}
+    #${cId} input[type='checkbox']{accent-color:#D40000}
     #${cId} #estatisticas-pausas details{margin-top:0}
-    #${cId} #estatisticas-pausas summary{border-bottom:1px solid rgba(13,110,253,.2)}
+    #${cId} #estatisticas-pausas summary{border-bottom:1px solid #444}
     </style>
 
-    <div id="pausa-script-config-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid rgba(13,110,253,.3);cursor:pointer;"><h3 style="margin:0;font-size:15px;color:#0d6efd;">⚙️ Config & Historico</h3><span id="btn-fechar-config" style="cursor:pointer;color:#0d6efd;font-weight:700;">❌</span></div>
+    <div id="pausa-script-config-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid rgba(212,0,0,.4);cursor:pointer;"><h3 style="margin:0;font-size:15px;color:#D40000;">⚙️ Config & Historico</h3><span id="btn-fechar-config" style="cursor:pointer;color:#D40000;font-weight:700;">❌</span></div>
     <div id="estatisticas-pausas" style="margin-bottom:0;"></div>
 
     <details><summary>🔔 Configurar Notificacoes</summary><div id="notificacao-config"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><label for="notif-ativadas">Ativar Visuais:</label><input type="checkbox" id="notif-ativadas"></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><label for="notif-som">Ativar Som:</label><input type="checkbox" id="notif-som"></div><div style="display:flex;justify-content:space-between;"><label for="notif-tempo">Antecedencia (s):</label><input type="number" id="notif-tempo" min="5" max="55" step="5" style="width:50px;"></div></div></details>
@@ -1004,14 +970,11 @@ function atualizarUI() {
     const tHeader = document.getElementById('pausa-script-header-clock');
     const sDisplay = document.getElementById('current-status');
 
-    let corFinal = '#0d6efd';
+    let corFinal = '#D40000'; // Alterado para o novo tema Rosso Corsa
 
-    if(tFlutuante){ tFlutuante.textContent = h; tFlutuante.style.color = corFinal; tFlutuante.style.textShadow = 'none';
-    }
-    if(tHeader) { tHeader.textContent = h; tHeader.style.color = corFinal; tHeader.style.textShadow = 'none';
-    }
-    if (tDot) { tDot.style.display = 'none'; tDot.style.animation = 'none'; tDot.style.opacity = '0';
-    }
+    if(tFlutuante){ tFlutuante.textContent = h; tFlutuante.style.color = corFinal; tFlutuante.style.textShadow = 'none'; }
+    if(tHeader) { tHeader.textContent = h; tHeader.style.color = corFinal; tHeader.style.textShadow = 'none'; }
+    if (tDot) { tDot.style.display = 'none'; tDot.style.animation = 'none'; tDot.style.opacity = '0'; }
 
     if(sDisplay){
         let e='';
@@ -1021,7 +984,7 @@ function atualizarUI() {
     }
 }
 
-console.log("[GERENCIADOR FUSAO] Iniciando (V56.25: Tudo Azul + Fix Scheduler + Modo Stealth Corrigido)...");
+console.log("[GERENCIADOR FUSAO] Iniciando (V56.26: Tema Rosso Corsa + Fix Duplo Timer)...");
 setTimeout(() => {
     try {
         configNotificacao = carregarConfiguracoesNotificacaoLocalStorage();
