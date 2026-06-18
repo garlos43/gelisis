@@ -458,27 +458,28 @@ function ocultarMenusTemporariamente() {
     }, 4500);
 }
 
+// Força o fechamento de qualquer popover ou menu aberto no Genesys com verificação agressiva
 function fecharMenusGenesys() {
     // 1. Tenta métodos nativos primeiro (ESC e clique fora)
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
     document.body.click();
     
-    // 2. Loop agressivo: Verifica o aria-expanded e ataca o botão até ele fechar de verdade
+    // 2. Loop de insistência: Clica no botão do perfil até ele realmente fechar
     let tentativasFechamento = 0;
     const checarFechamento = setInterval(() => {
         const btnMenu = document.querySelector('#user-settings-button');
         
-        // Se o botão ainda disser que o menu está aberto, clica nele!
+        // Se o botão ainda estiver com o menu aberto (aria-expanded="true"), clica nele!
         if (btnMenu && btnMenu.getAttribute('aria-expanded') === 'true') {
             try { btnMenu.click(); } catch(e) {}
         } else {
-            // Se já não estiver aberto, aborta o loop e poupa memória
+            // Se o menu já estiver marcado como fechado (ou não existir), paramos de tentar
             clearInterval(checarFechamento);
         }
         
         tentativasFechamento++;
         
-        // Limite máximo de 1.5 segundos vigiando para não criar loop infinito
+        // Aborta após 1.5 segundos (10 tentativas) para não criar loop infinito
         if (tentativasFechamento > 10) {
             clearInterval(checarFechamento);
         }
